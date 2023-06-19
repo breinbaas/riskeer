@@ -1,13 +1,12 @@
 import shapefile
-from shapely.geometry import Polygon
 
-from helpers import xy_at_chainage, read_shapefile
+from helpers import xy_at_chainage, read_referenceline
 
 
-def get_points_from_start_to_end(start, end, points_with_chainage):
-    pts = [p for p in points_with_chainage if p[0] > start and p[0] < end]
-    p_start = (start, *xy_at_chainage(start, points_with_chainage))
-    p_end = (end, *xy_at_chainage(end, points_with_chainage))
+def get_points_from_start_to_end(start, end, refline):
+    pts = [p for p in refline if p[0] > start and p[0] < end]
+    p_start = (start, *xy_at_chainage(start, refline))
+    p_end = (end, *xy_at_chainage(end, refline))
     return [p_start] + pts + [p_end]
 
 
@@ -44,23 +43,23 @@ def creeer_vakindeling(shpfile: str, csvfile: str, outputfile: str):
         s.strip() for s in open(csvfile, "r").readlines()[1:] if len(s.strip()) > 0
     ]
 
-    points_with_chainage = read_shapefile(shpfile)
+    refline = read_referenceline(shpfile)
 
     with shapefile.Writer(outputfile) as w:
         w.field("Vaknaam", "C")
-        end, xp, yp = 0, points_with_chainage[0][1], points_with_chainage[0][2]
+        end, xp, yp = 0, refline[0][1], refline[0][2]
         for i, line in enumerate(lines):
             args = line.split(",")
             start = int(args[0])
             name = args[1]
 
             if i == len(lines) - 1:
-                end = points_with_chainage[-1][0]
+                end = refline[-1][0]
             else:
                 args = lines[i + 1].split(",")
                 end = int(args[0])
 
-            pts = get_points_from_start_to_end(start, end, points_with_chainage)
+            pts = get_points_from_start_to_end(start, end, refline)
 
             w.record(name)  # * for unpacking tuple
             w.line([[p[1:] for p in pts]])

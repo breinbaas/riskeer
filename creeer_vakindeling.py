@@ -1,22 +1,7 @@
 import shapefile
 from shapely.geometry import Polygon
-from math import hypot
-from typing import Tuple
 
-
-def xy_at_chainage(chainage, points_with_chainage) -> Tuple[float, float]:
-    for i in range(1, len(points_with_chainage)):
-        c1, x1, y1 = points_with_chainage[i - 1]
-        c2, x2, y2 = points_with_chainage[i]
-
-        if chainage >= c1 and chainage <= c2:
-            x = x1 + (chainage - c1) / (c2 - c1) * (x2 - x1)
-            y = y1 + (chainage - c1) / (c2 - c1) * (y2 - y1)
-            return x, y
-
-    raise ValueError(
-        f"Invalid chainage '{chainage}' is not between start and endpoint of the given referenceline"
-    )
+from helpers import xy_at_chainage, read_shapefile
 
 
 def get_points_from_start_to_end(start, end, points_with_chainage):
@@ -28,7 +13,7 @@ def get_points_from_start_to_end(start, end, points_with_chainage):
 
 def creeer_vakindeling(shpfile: str, csvfile: str, outputfile: str):
     """Creeer een referentielijn op basis van een vakindeling bestand welke binnen
-    Riskeer geimporteerd kan worden als een referentielijn voor een specifiek
+    Riskeer geimporteerd kan worden als een referentielijn voor een specifiek`
     faalmechanisme
 
     Werkwijze:
@@ -59,23 +44,7 @@ def creeer_vakindeling(shpfile: str, csvfile: str, outputfile: str):
         s.strip() for s in open(csvfile, "r").readlines()[1:] if len(s.strip()) > 0
     ]
 
-    shape = shapefile.Reader(shpfile)
-    feature = shape.shapeRecords()[0]
-    first = feature.shape.__geo_interface__
-    if not first["type"] == "LineString":
-        raise NotImplementedError(
-            f"ReferenceLine.from_shape only handles LineString geometries but got a '{first['type']}' geometry."
-        )
-    points = [(p[0], p[1]) for p in first["coordinates"]]
-
-    dl = 0
-    points_with_chainage = []
-    for i, p in enumerate(points):
-        if i > 0:
-            dl += hypot(
-                points_with_chainage[-1][1] - p[0], points_with_chainage[-1][2] - p[1]
-            )
-        points_with_chainage.append((dl, *p))
+    points_with_chainage = read_shapefile(shpfile)
 
     with shapefile.Writer(outputfile) as w:
         w.field("Vaknaam", "C")
